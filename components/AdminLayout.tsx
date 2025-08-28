@@ -45,7 +45,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         </nav>
         <div className="w-full">
           <Separator className="my-4" />
-          <Link href="/auth/login">
+          <Link href="/">
             <Button
               variant="ghost"
               className="w-full justify-start text-sm text-red-500 hover:bg-red-500/10 hover:text-red-600"

@@ -1,111 +1,77 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import AdminLayout from "@/components/AdminLayout";
+import { ref, push, set } from "firebase/database";
+import { database } from "../../../lib/firebase";
 
 interface Video {
   title: string;
   description: string;
-  link: string; // Always stored as an embed link
-  thumbnail: string; // Base64 or object URL
-  type: string; // Stream type (Movie, Episode, etc.)
-  language: string; // Telugu, Hindi, Tamil, Other
+  link: string;
+  thumbnailUrl: string;
+  type: string;
+  language: string;
 }
 
 export default function UploadPage() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [link, setLink] = useState("");
-  const [thumbnail, setThumbnail] = useState<string>("");
-  const [type, setType] = useState("Movie"); // default
-  const [language, setLanguage] = useState("Telugu"); // ✅ default must match dropdown
+  const [thumbnailUrl, setThumbnailUrl] = useState("");
+  const [type, setType] = useState("Movie");
+  const [language, setLanguage] = useState("Telugu");
 
-  // Normalize old videos in localStorage (replace "English" → "Other")
-  useEffect(() => {
-    const existing = JSON.parse(localStorage.getItem("videos") || "[]");
-    let updated = false;
-
-    const normalized = existing.map((video: Video) => {
-      if (video.language === "English") {
-        updated = true;
-        return { ...video, language: "Other" };
-      }
-      return video;
-    });
-
-    if (updated) {
-      localStorage.setItem("videos", JSON.stringify(normalized));
+  const getEmbedLink = (url: string) => {
+    if (url.includes("watch?v=")) {
+      const videoId = url.split("watch?v=")[1].split("&")[0];
+      return `https://www.youtube.com/embed/${videoId}`;
     }
-  }, []);
-
-  // Handle thumbnail upload
-  const handleThumbnailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setThumbnail(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+    if (url.includes("youtu.be/")) {
+      const videoId = url.split("youtu.be/")[1].split("?")[0];
+      return `https://www.youtube.com/embed/${videoId}`;
     }
+    return url;
   };
 
-  // Convert YouTube watch links -> embed links
-  const getEmbedLink = (url: string): string => {
-    try {
-      if (url.includes("watch?v=")) {
-        const videoId = url.split("watch?v=")[1].split("&")[0];
-        return `https://www.youtube.com/embed/${videoId}`;
-      }
-      if (url.includes("youtu.be/")) {
-        const videoId = url.split("youtu.be/")[1].split("?")[0];
-        return `https://www.youtube.com/embed/${videoId}`;
-      }
-      return url; // already embed or other platform
-    } catch {
-      return url;
-    }
-  };
-
-  // Handle form submission
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     const embedLink = getEmbedLink(link);
 
     const newVideo: Video = {
       title,
       description,
       link: embedLink,
-      thumbnail,
+      thumbnailUrl,
       type,
       language,
     };
 
-    // Save to localStorage
-    const existing = JSON.parse(localStorage.getItem("videos") || "[]");
-    existing.push(newVideo);
-    localStorage.setItem("videos", JSON.stringify(existing));
+    try {
+      const videosRef = ref(database, "videos");
+      const newVideoRef = push(videosRef);
+      await set(newVideoRef, newVideo);
 
-    // Reset form
-    setTitle("");
-    setDescription("");
-    setLink("");
-    setThumbnail("");
-    setType("Movie");
-    setLanguage("Telugu");
-
-    alert("✅ Video uploaded successfully!");
+      alert("✅ Video uploaded successfully!");
+      setTitle("");
+      setDescription("");
+      setLink("");
+      setThumbnailUrl("");
+      setType("Movie");
+      setLanguage("Telugu");
+    } catch (err) {
+      console.error(err);
+      alert("❌ Upload failed!");
+    }
   };
 
   return (
     <AdminLayout>
       <h1 className="text-3xl font-bold mb-4">Upload Video</h1>
       <form onSubmit={handleSubmit} className="space-y-4 max-w-lg">
-        {/* Title */}
         <Input
           placeholder="Video Title"
           value={title}
@@ -113,7 +79,6 @@ export default function UploadPage() {
           required
         />
 
-        {/* Description */}
         <Textarea
           placeholder="Video Description"
           value={description}
@@ -121,7 +86,6 @@ export default function UploadPage() {
           required
         />
 
-        {/* YouTube Link */}
         <Input
           placeholder="Video Link (YouTube or Embed link)"
           value={link}
@@ -129,7 +93,6 @@ export default function UploadPage() {
           required
         />
 
-        {/* Stream Type */}
         <div className="space-y-2">
           <label className="block text-sm font-medium text-primary">
             Stream Type
@@ -137,7 +100,7 @@ export default function UploadPage() {
           <select
             value={type}
             onChange={(e) => setType(e.target.value)}
-            className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground shadow-sm focus:border-primary focus:ring focus:ring-primary/30"
+            className="w-full rounded-lg border bg-card px-3 py-2 text-sm"
           >
             <option value="Movie">Movie</option>
             <option value="Episode">Episode</option>
@@ -145,10 +108,11 @@ export default function UploadPage() {
             <option value="Clip">Clip</option>
             <option value="Trailer">Trailer</option>
             <option value="Action">Action</option>
+                        <option value="Song">Song</option>
+
           </select>
         </div>
 
-        {/* Language */}
         <div className="space-y-2">
           <label className="block text-sm font-medium text-primary">
             Language
@@ -156,7 +120,7 @@ export default function UploadPage() {
           <select
             value={language}
             onChange={(e) => setLanguage(e.target.value)}
-            className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground shadow-sm focus:border-primary focus:ring focus:ring-primary/30"
+            className="w-full rounded-lg border bg-card px-3 py-2 text-sm"
           >
             <option value="Telugu">Telugu</option>
             <option value="Hindi">Hindi</option>
@@ -165,22 +129,23 @@ export default function UploadPage() {
           </select>
         </div>
 
-        {/* Thumbnail Upload */}
         <div className="space-y-2">
-          <label className="block text-sm font-medium">Upload Thumbnail</label>
-          <Input type="file" accept="image/*" onChange={handleThumbnailChange} />
-          {thumbnail && (
-            <a
-              href={getEmbedLink(link)}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <img
-                src={thumbnail}
-                alt="Thumbnail Preview"
-                className="mt-2 h-32 w-auto rounded-lg border cursor-pointer hover:opacity-80 transition"
-              />
-            </a>
+          <label className="block text-sm font-medium">
+            Thumbnail Image URL
+          </label>
+          <Input
+            type="url"
+            placeholder="Paste thumbnail image URL (e.g. https://example.com/image.jpg)"
+            value={thumbnailUrl}
+            onChange={(e) => setThumbnailUrl(e.target.value)}
+            required
+          />
+          {thumbnailUrl && (
+            <img
+              src={thumbnailUrl}
+              alt="Thumbnail Preview"
+              className="mt-2 h-32 w-auto rounded-lg border"
+            />
           )}
         </div>
 

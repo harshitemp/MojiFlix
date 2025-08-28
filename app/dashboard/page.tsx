@@ -6,17 +6,19 @@ import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
+import { ref, onValue } from "firebase/database";
+import { database } from "@/lib/firebase";
 
 interface Video {
   title: string;
   description: string;
   link: string;
-  thumbnail: string;
+  thumbnailUrl: string;
   type: string;
   language?: string;
 }
 
-const categories = ["Movie", "Episode", "Horror", "Clip", "Trailer", "Action"];
+const categories = ["Movie", "Episode", "Horror", "Clip", "Trailer", "Action","Song"];
 const languages = ["Telugu", "Hindi", "Tamil", "Other"];
 
 export default function UserDashboard() {
@@ -26,16 +28,23 @@ export default function UserDashboard() {
   const [languageFilter, setLanguageFilter] = useState("");
   const [heroIndex, setHeroIndex] = useState(0);
 
-  // Fetch videos from localStorage
+  // Fetch videos from Firebase Realtime Database
   useEffect(() => {
-    const stored = JSON.parse(localStorage.getItem("videos") || "[]");
-    setVideos(stored);
+    const videosRef = ref(database, "videos");
+    onValue(videosRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const arr = Object.values(data) as Video[];
+        setVideos(arr);
+      } else {
+        setVideos([]);
+      }
+    });
   }, []);
 
   // Latest 5 episodes for hero carousel
   const latestEpisodes = videos
     .filter((v) => v.type === "Episode")
-    .sort((a, b) => 0) // If you want to sort by date, replace this with a date field
     .slice(0, 5);
 
   // Auto-rotate hero
@@ -120,7 +129,7 @@ export default function UserDashboard() {
               className="absolute inset-0"
             >
               <img
-                src={latestEpisodes[heroIndex].thumbnail}
+                src={latestEpisodes[heroIndex].thumbnailUrl}
                 alt={latestEpisodes[heroIndex].title}
                 className="w-full h-full object-cover"
               />
@@ -183,7 +192,7 @@ export default function UserDashboard() {
                         onClick={() => (window.location.href = `/watch/${videos.indexOf(video)}`)}
                       >
                         <img
-                          src={video.thumbnail}
+                          src={video.thumbnailUrl}
                           alt={video.title}
                           className="h-40 w-full object-cover group-hover:brightness-75 transition"
                         />

@@ -4,36 +4,47 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
+import { ref, onValue } from "firebase/database";
+import { database } from "@/lib/firebase";
 
 interface Video {
   title: string;
   description: string;
   link: string;
-  thumbnail: string;
+  thumbnailUrl: string;
   type: string;
+  language?: string;
 }
 
 export default function WatchPage() {
   const { id } = useParams();
   const router = useRouter();
   const [video, setVideo] = useState<Video | null>(null);
+  const [allVideos, setAllVideos] = useState<Video[]>([]);
 
+  // Fetch videos from Firebase
   useEffect(() => {
-    const stored: Video[] = JSON.parse(localStorage.getItem("videos") || "[]");
-    const found = stored[parseInt(id as string)];
+    const videosRef = ref(database, "videos");
+    onValue(videosRef, (snapshot) => {
+      const data = snapshot.val();
+      const arr: Video[] = data ? Object.values(data) as Video[] : [];
+      setAllVideos(arr);
 
-    if (found) {
-      // 🔥 Fix YouTube URL if needed
-      let embedLink = found.link;
-      if (embedLink.includes("youtube.com/watch?v=")) {
-        const videoId = new URL(embedLink).searchParams.get("v");
-        embedLink = `https://www.youtube.com/embed/${videoId}`;
-      } else if (embedLink.includes("youtu.be/")) {
-        const videoId = embedLink.split("youtu.be/")[1];
-        embedLink = `https://www.youtube.com/embed/${videoId}`;
+      const idx = parseInt(id as string);
+      const found = arr[idx];
+      if (found) {
+        // Ensure embed link
+        let embedLink = found.link;
+        if (embedLink.includes("youtube.com/watch?v=")) {
+          const videoId = new URL(embedLink).searchParams.get("v");
+          embedLink = `https://www.youtube.com/embed/${videoId}`;
+        } else if (embedLink.includes("youtu.be/")) {
+          const videoId = embedLink.split("youtu.be/")[1];
+          embedLink = `https://www.youtube.com/embed/${videoId}`;
+        }
+        setVideo({ ...found, link: embedLink });
       }
-      setVideo({ ...found, link: embedLink });
-    }
+    });
   }, [id]);
 
   if (!video) {
@@ -48,11 +59,11 @@ export default function WatchPage() {
           src={video.link}
           className="w-full h-full object-cover"
           allowFullScreen
-        ></iframe>
+        />
 
         {/* Back Button */}
         <Button
-          onClick={() => router.push("/")}
+          onClick={() => router.push("/dashboard")}
           className="absolute top-6 left-6 bg-red-600 hover:bg-red-700"
         >
           ← Back
@@ -83,13 +94,10 @@ export default function WatchPage() {
       <div className="px-10 py-6">
         <h2 className="text-2xl font-bold mb-4">More Like This</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-          {JSON.parse(localStorage.getItem("videos") || "[]")
-            .filter(
-              (v: Video) => v.type === video.type && v.title !== video.title
-            )
+          {allVideos
+            .filter((v) => v.type === video.type && v.title !== video.title)
             .slice(0, 6)
-            .map((v: Video, idx: number) => {
-              // fix embed for suggested too
+            .map((v, idx) => {
               let embedLink = v.link;
               if (embedLink.includes("youtube.com/watch?v=")) {
                 const videoId = new URL(embedLink).searchParams.get("v");
@@ -103,16 +111,18 @@ export default function WatchPage() {
                 <div
                   key={idx}
                   className="bg-gray-900 rounded-xl overflow-hidden shadow-lg cursor-pointer hover:scale-105 transition"
-                  onClick={() => router.push(`/watch/${idx}`)}
+                  onClick={() => router.push(`/watch/${allVideos.indexOf(v)}`)}
                 >
                   <img
-                    src={v.thumbnail}
+                    src={v.thumbnailUrl}
                     alt={v.title}
                     className="h-40 w-full object-cover"
                   />
                   <div className="p-3">
                     <h3 className="text-sm font-bold truncate">{v.title}</h3>
-                    <p className="text-xs text-gray-400">{v.type}</p>
+                    <p className="text-xs text-gray-400">
+                      {v.type} | {v.language || "Other"}
+                    </p>
                   </div>
                 </div>
               );

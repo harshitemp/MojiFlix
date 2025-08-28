@@ -11,9 +11,8 @@ const dmSans = DM_Sans({
 })
 
 export const metadata: Metadata = {
-  title: "StreamFlix - Your Premium Streaming Experience",
-  description: "Watch unlimited movies, TV shows, and exclusive content",
-  generator: "v0.app",
+  title: "MojiFlix - Your Entertainment Streaming Experience",
+  description: "Watch unlimited movies,episodes and exclusive content",
 }
 
 export default function RootLayout({

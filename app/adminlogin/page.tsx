@@ -3,16 +3,18 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { Eye, EyeOff } from "lucide-react" // 👈 icon library (shipped with shadcn/ui)
 
 export default function AdminLoginPage() {
   const router = useRouter()
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
+  const [showPassword, setShowPassword] = useState(false) // 👈 toggle state
 
-  // Hardcoded admin credentials
-  const ADMIN_USER = "admin"
-  const ADMIN_PASS = "mojiflix123"
+  // Hardcoded admin credentials (⚠️ should move to secure storage later)
+  const ADMIN_USER = "mojiflix"
+  const ADMIN_PASS = "Moj!@#Fl!x$8"
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault()
@@ -55,14 +57,23 @@ export default function AdminLoginPage() {
 
             <div>
               <label className="block text-sm font-medium text-foreground mb-1">Password</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-2 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                placeholder="Enter password"
-                required
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"} // 👈 toggle type
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full px-4 py-2 pr-10 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  placeholder="Enter password"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
 
             {error && <p className="text-red-500 text-sm">{error}</p>}
