@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
 import { ref, onValue } from "firebase/database";
 import { database } from "@/lib/firebase";
+import { Button } from "@/components/ui/button";
 
 interface Video {
   title: string;
@@ -13,105 +12,113 @@ interface Video {
   link: string;
   thumbnailUrl: string;
   type: string;
+  series?: string;
   language?: string;
 }
 
 export default function WatchPage() {
   const { id } = useParams();
   const router = useRouter();
-  const [video, setVideo] = useState<Video | null>(null);
-  const [allVideos, setAllVideos] = useState<Video[]>([]);
+  const [videos, setVideos] = useState<Video[]>([]);
+  const [currentIndex, setCurrentIndex] = useState<number>(-1);
+  const [seriesEpisodes, setSeriesEpisodes] = useState<Video[]>([]);
+  const [seriesIndex, setSeriesIndex] = useState<number>(-1);
 
   // Fetch videos from Firebase
   useEffect(() => {
     const videosRef = ref(database, "videos");
     onValue(videosRef, (snapshot) => {
       const data = snapshot.val();
-      const arr: Video[] = data ? Object.values(data) as Video[] : [];
-      setAllVideos(arr);
+      if (data) {
+        const arr = Object.values(data) as Video[];
+        setVideos(arr);
 
-      const idx = parseInt(id as string);
-      const found = arr[idx];
-      if (found) {
-        // Ensure embed link
-        let embedLink = found.link;
-        if (embedLink.includes("youtube.com/watch?v=")) {
-          const videoId = new URL(embedLink).searchParams.get("v");
-          embedLink = `https://www.youtube.com/embed/${videoId}`;
-        } else if (embedLink.includes("youtu.be/")) {
-          const videoId = embedLink.split("youtu.be/")[1];
-          embedLink = `https://www.youtube.com/embed/${videoId}`;
+        const idx = Number(id);
+        setCurrentIndex(idx);
+
+        if (arr[idx]?.series) {
+          const filtered = arr.filter(
+            (v) => v.series === arr[idx].series && v.type === "Episode"
+          );
+          setSeriesEpisodes(filtered);
+
+          const epIndex = filtered.findIndex((v) => v.title === arr[idx].title);
+          setSeriesIndex(epIndex);
+        } else {
+          setSeriesEpisodes([]);
+          setSeriesIndex(-1);
         }
-        setVideo({ ...found, link: embedLink });
       }
     });
   }, [id]);
 
-  if (!video) {
-    return <p className="text-center text-gray-400 mt-20">Video not found.</p>;
-  }
+  if (currentIndex === -1 || !videos[currentIndex]) return null;
+
+  const video = videos[currentIndex];
+
+  const handleNextEpisode = () => {
+    if (seriesIndex !== -1 && seriesIndex < seriesEpisodes.length - 1) {
+      const nextEpisode = seriesEpisodes[seriesIndex + 1];
+      const nextIndex = videos.findIndex((v) => v.title === nextEpisode.title);
+      if (nextIndex !== -1) {
+        router.push(`/watch/${nextIndex}`);
+      }
+    }
+  };
 
   return (
-    <div className="bg-black min-h-screen text-white">
+    <div className="bg-black min-h-screen text-white p-8 relative">
+      {/* Back Button */}
+      <Button
+        onClick={() => router.back()}
+        className="mb-6 bg-red-600 hover:bg-red-700"
+      >
+        ← Back
+      </Button>
+
       {/* Video Player */}
-      <div className="relative w-full h-[70vh] bg-black">
+      <div className="flex flex-col items-center">
         <iframe
-          src={video.link}
-          className="w-full h-full object-cover"
+          width="100%"
+          height="500"
+          src={`${video.link}?autoplay=1`}
+          title={video.title}
+          className="rounded-lg"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
           allowFullScreen
-        />
+        ></iframe>
 
-        {/* Back Button */}
-        <Button
-          onClick={() => router.push("/dashboard")}
-          className="absolute top-6 left-6 bg-red-600 hover:bg-red-700"
-        >
-          ← Back
-        </Button>
+        <h1 className="text-3xl font-bold mt-4">{video.title}</h1>
+        <p className="text-gray-400 mt-2">{video.description}</p>
       </div>
 
-      {/* Details Section */}
-      <div className="px-10 py-6 space-y-4">
-        <motion.h1
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="text-4xl font-bold"
-        >
-          {video.title}
-        </motion.h1>
-        <motion.p
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          className="text-gray-400 text-lg max-w-3xl"
-        >
-          {video.description}
-        </motion.p>
-      </div>
+      {/* Floating Next Episode Button - only for series */}
+      {video.series &&
+        seriesIndex !== -1 &&
+        seriesIndex < seriesEpisodes.length - 1 && (
+          <Button
+            onClick={handleNextEpisode}
+            className="fixed bottom-6 right-6 bg-blue-600 hover:bg-blue-700 shadow-lg rounded-full px-6 py-3"
+          >
+            Next Episode →
+          </Button>
+        )}
 
-      {/* Suggested Videos */}
-      <div className="px-10 py-6">
-        <h2 className="text-2xl font-bold mb-4">More Like This</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-          {allVideos
-            .filter((v) => v.type === video.type && v.title !== video.title)
-            .slice(0, 6)
-            .map((v, idx) => {
-              let embedLink = v.link;
-              if (embedLink.includes("youtube.com/watch?v=")) {
-                const videoId = new URL(embedLink).searchParams.get("v");
-                embedLink = `https://www.youtube.com/embed/${videoId}`;
-              } else if (embedLink.includes("youtu.be/")) {
-                const videoId = embedLink.split("youtu.be/")[1];
-                embedLink = `https://www.youtube.com/embed/${videoId}`;
-              }
-
-              return (
+      {/* Related Videos - only for category/type */}
+      {!video.series && (
+        <div className="mt-10">
+          <h2 className="text-2xl font-bold mb-4">
+            More {video.type} Videos
+          </h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            {videos
+              .filter((v) => v.type === video.type && v.title !== video.title)
+              .slice(0, 6)
+              .map((v, idx) => (
                 <div
                   key={idx}
                   className="bg-gray-900 rounded-xl overflow-hidden shadow-lg cursor-pointer hover:scale-105 transition"
-                  onClick={() => router.push(`/watch/${allVideos.indexOf(v)}`)}
+                  onClick={() => router.push(`/watch/${videos.indexOf(v)}`)}
                 >
                   <img
                     src={v.thumbnailUrl}
@@ -125,10 +132,10 @@ export default function WatchPage() {
                     </p>
                   </div>
                 </div>
-              );
-            })}
+              ))}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

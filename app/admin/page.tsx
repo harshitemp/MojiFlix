@@ -14,6 +14,7 @@ interface Video {
   thumbnailUrl: string;
   type: string;
   language: string;
+  series?: string; // NEW FIELD
 }
 
 export default function AdminDashboard() {
@@ -67,12 +68,16 @@ export default function AdminDashboard() {
           placeholder="Search..."
           value={searchTitle}
           onChange={(e) => setSearchTitle(e.target.value)}
-          className="md:w-1/3 rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-red-600"
+          className="md:w-1/3 rounded-lg border border-gray-600 bg-gray-800 text-white px-3 py-2 shadow-sm 
+                     focus:outline-none focus:ring-2 focus:ring-red-600"
         />
+
         <select
           value={filterType}
           onChange={(e) => setFilterType(e.target.value)}
-          className="md:w-1/4 rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-red-600"
+          className="md:w-1/4 rounded-lg border border-gray-600 bg-gray-800 text-white px-3 py-2 shadow-sm 
+                     focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                     hover:bg-gray-700 transition-colors"
         >
           <option value="All">All Types</option>
           <option value="Movie">Movie</option>
@@ -81,13 +86,15 @@ export default function AdminDashboard() {
           <option value="Clip">Clip</option>
           <option value="Trailer">Trailer</option>
           <option value="Action">Action</option>
-                                  <option value="Song">Song</option>
-
+          <option value="Song">Song</option>
         </select>
+
         <select
           value={filterLanguage}
           onChange={(e) => setFilterLanguage(e.target.value)}
-          className="md:w-1/4 rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-red-600"
+          className="md:w-1/4 rounded-lg border border-gray-600 bg-gray-800 text-white px-3 py-2 shadow-sm 
+                     focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500
+                     hover:bg-gray-700 transition-colors"
         >
           <option value="All">All Languages</option>
           <option value="Telugu">Telugu</option>
@@ -109,22 +116,24 @@ export default function AdminDashboard() {
               <div className="p-4">
                 <h2 className="text-lg font-semibold truncate">{data.title}</h2>
                 <p className="text-sm text-gray-500 line-clamp-2">{data.description}</p>
-                <p className="text-xs mt-1 text-gray-400">{data.type} | {data.language}</p>
+                <p className="text-xs mt-1 text-gray-400">
+                  {data.type} | {data.language} {data.series && `| ${data.series}`}
+                </p>
                 <div className="flex gap-2 mt-3">
                   <Button
-                    className="bg-blue-600 hover:bg-blue-700 active:scale-95 active:brightness-90 text-white transition-transform duration-150"
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
                     onClick={() => setSelectedVideo(data)}
                   >
                     Preview
                   </Button>
                   <Button
-                    className="bg-yellow-500 hover:bg-yellow-600 active:scale-95 active:brightness-90 text-white transition-transform duration-150"
+                    className="bg-yellow-500 hover:bg-yellow-600 text-white"
                     onClick={() => setEditingVideo({ key, data })}
                   >
                     Edit
                   </Button>
                   <Button
-                    className="bg-red-600 hover:bg-red-700 active:scale-95 active:brightness-90 text-white transition-transform duration-150"
+                    className="bg-red-600 hover:bg-red-700 text-white"
                     onClick={() => setDeleteVideoConfirm({ key, data })}
                   >
                     Delete
@@ -142,14 +151,16 @@ export default function AdminDashboard() {
           <div className="bg-white p-6 rounded-xl shadow-xl max-w-3xl w-full relative overflow-y-auto max-h-[90vh]">
             <button
               onClick={() => setSelectedVideo(null)}
-              className="absolute top-3 right-3 text-gray-600 hover:text-gray-900 font-bold text-xl active:scale-95 transition-transform duration-150"
+              className="absolute top-3 right-3 text-gray-600 hover:text-gray-900 font-bold text-xl"
             >
               ×
             </button>
             <h2 className="text-2xl font-bold mb-4">{selectedVideo.title}</h2>
             <iframe src={selectedVideo.link} className="w-full h-96 rounded-lg mb-4" allowFullScreen />
             <p className="text-gray-700">{selectedVideo.description}</p>
-            <p className="text-sm font-medium text-gray-500 mt-2">{selectedVideo.type} | {selectedVideo.language}</p>
+            <p className="text-sm font-medium text-gray-500 mt-2">
+              {selectedVideo.type} | {selectedVideo.language} {selectedVideo.series && `| ${selectedVideo.series}`}
+            </p>
           </div>
         </div>
       )}
@@ -160,7 +171,7 @@ export default function AdminDashboard() {
           <div className="bg-black p-6 rounded-xl shadow-xl max-w-lg w-full overflow-y-auto max-h-[90vh] relative">
             <button
               onClick={() => setEditingVideo(null)}
-              className="absolute top-3 right-3 text-gray-600 hover:text-gray-900 font-bold text-xl active:scale-95 transition-transform duration-150"
+              className="absolute top-3 right-3 text-white font-bold text-xl"
             >
               ×
             </button>
@@ -176,6 +187,7 @@ export default function AdminDashboard() {
                   thumbnailUrl: (form.elements.namedItem("thumbnailUrl") as HTMLInputElement).value,
                   type: (form.elements.namedItem("type") as HTMLSelectElement).value,
                   language: (form.elements.namedItem("language") as HTMLSelectElement).value || "Other",
+                  series: (form.elements.namedItem("series") as HTMLInputElement)?.value || undefined,
                 };
                 updateVideo(editingVideo.key, updated);
               }}
@@ -188,7 +200,7 @@ export default function AdminDashboard() {
                   name="title"
                   defaultValue={editingVideo.data.title}
                   placeholder="Title"
-                  className="w-full border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-red-600"
+                  className="w-full border border-gray-300 rounded-lg p-2"
                 />
               </div>
 
@@ -199,7 +211,7 @@ export default function AdminDashboard() {
                   name="description"
                   defaultValue={editingVideo.data.description}
                   placeholder="Description"
-                  className="w-full border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-red-600"
+                  className="w-full border border-gray-300 rounded-lg p-2"
                 />
               </div>
 
@@ -210,7 +222,7 @@ export default function AdminDashboard() {
                   name="link"
                   defaultValue={editingVideo.data.link}
                   placeholder="Video Link"
-                  className="w-full border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-red-600"
+                  className="w-full border border-gray-300 rounded-lg p-2"
                 />
               </div>
 
@@ -221,7 +233,7 @@ export default function AdminDashboard() {
                   name="thumbnailUrl"
                   defaultValue={editingVideo.data.thumbnailUrl}
                   placeholder="Thumbnail URL"
-                  className="w-full border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-red-600"
+                  className="w-full border border-gray-300 rounded-lg p-2"
                 />
               </div>
 
@@ -231,16 +243,16 @@ export default function AdminDashboard() {
                   id="type"
                   name="type"
                   defaultValue={editingVideo.data.type}
-                  className="w-full border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-red-600"
+                  className="w-full rounded-lg p-2 bg-gray-800 text-white border border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="Movie">Movie</option>
                   <option value="Episode">Episode</option>
                   <option value="Horror">Horror</option>
+                  <option value="Series">Series</option>
                   <option value="Clip">Clip</option>
                   <option value="Trailer">Trailer</option>
                   <option value="Action">Action</option>
-                                          <option value="Song">Song</option>
-
+                  <option value="Song">Song</option>
                 </select>
               </div>
 
@@ -250,7 +262,7 @@ export default function AdminDashboard() {
                   id="language"
                   name="language"
                   defaultValue={editingVideo.data.language}
-                  className="w-full border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-red-600"
+                  className="w-full rounded-lg p-2 bg-gray-800 text-white border border-gray-600 focus:ring-2 focus:ring-green-500 focus:border-green-500"
                 >
                   <option value="Telugu">Telugu</option>
                   <option value="Hindi">Hindi</option>
@@ -259,10 +271,21 @@ export default function AdminDashboard() {
                 </select>
               </div>
 
-              <Button
-                type="submit"
-                className="w-full bg-green-600 hover:bg-green-700 active:scale-95 active:brightness-90 text-white transition-transform duration-150"
-              >
+              {/* NEW FIELD: Series */}
+              {editingVideo.data.type === "Episode" && (
+                <div>
+                  <label htmlFor="series" className="block text-sm font-medium text-white mb-1">Series</label>
+                  <input
+                    id="series"
+                    name="series"
+                    defaultValue={editingVideo.data.series || ""}
+                    placeholder="Series name (e.g. Law Firm Battles)"
+                    className="w-full border border-gray-300 rounded-lg p-2"
+                  />
+                </div>
+              )}
+
+              <Button type="submit" className="w-full bg-green-600 hover:bg-green-700 text-white">
                 Save Changes
               </Button>
             </form>
@@ -275,16 +298,18 @@ export default function AdminDashboard() {
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl p-6 shadow-xl max-w-sm w-full text-center">
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Delete Video</h2>
-            <p className="text-gray-700">Are you sure you want to delete <b>{deleteVideoConfirm.data.title}</b>?</p>
+            <p className="text-gray-700">
+              Are you sure you want to delete <b>{deleteVideoConfirm.data.title}</b>?
+            </p>
             <div className="flex gap-4 mt-4 justify-center">
               <Button
-                className="bg-red-600 hover:bg-red-700 active:scale-95 active:brightness-90 text-white transition-transform duration-150"
+                className="bg-red-600 hover:bg-red-700 text-white"
                 onClick={() => deleteVideo(deleteVideoConfirm.key)}
               >
                 Delete
               </Button>
               <Button
-                className="bg-gray-300 hover:bg-gray-400 active:scale-95 active:brightness-90 text-gray-900 transition-transform duration-150"
+                className="bg-gray-300 hover:bg-gray-400 text-gray-900"
                 onClick={() => setDeleteVideoConfirm(null)}
               >
                 Cancel

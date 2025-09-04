@@ -15,6 +15,7 @@ interface Video {
   thumbnailUrl: string;
   type: string;
   language: string;
+  series?: string; // optional
 }
 
 export default function UploadPage() {
@@ -24,6 +25,7 @@ export default function UploadPage() {
   const [thumbnailUrl, setThumbnailUrl] = useState("");
   const [type, setType] = useState("Movie");
   const [language, setLanguage] = useState("Telugu");
+  const [series, setSeries] = useState(""); // optional
 
   const getEmbedLink = (url: string) => {
     if (url.includes("watch?v=")) {
@@ -48,6 +50,7 @@ export default function UploadPage() {
       thumbnailUrl,
       type,
       language,
+      ...(series && { series }), // only add if not empty
     };
 
     try {
@@ -62,6 +65,7 @@ export default function UploadPage() {
       setThumbnailUrl("");
       setType("Movie");
       setLanguage("Telugu");
+      setSeries(""); // reset
     } catch (err) {
       console.error(err);
       alert("❌ Upload failed!");
@@ -108,9 +112,20 @@ export default function UploadPage() {
             <option value="Clip">Clip</option>
             <option value="Trailer">Trailer</option>
             <option value="Action">Action</option>
-                        <option value="Song">Song</option>
-
+            <option value="Song">Song</option>
           </select>
+        </div>
+
+        {/* Series field is ALWAYS visible, optional */}
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-primary">
+            Series Name (optional)
+          </label>
+          <Input
+            placeholder="Enter series name (e.g. Law Firm Battles)"
+            value={series}
+            onChange={(e) => setSeries(e.target.value)}
+          />
         </div>
 
         <div className="space-y-2">
@@ -125,6 +140,7 @@ export default function UploadPage() {
             <option value="Telugu">Telugu</option>
             <option value="Hindi">Hindi</option>
             <option value="Tamil">Tamil</option>
+            <option value="Korean">Korean</option>
             <option value="Other">Other</option>
           </select>
         </div>

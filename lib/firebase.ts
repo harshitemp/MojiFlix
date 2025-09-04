@@ -9,9 +9,8 @@ const firebaseConfig = {
   storageBucket: "mojiflix-e3f49.firebasestorage.app",
   messagingSenderId: "336781949592",
   appId: "1:336781949592:web:4fae8406ed0f131a3c2eed",
-  measurementId: "G-G0N2RQKZ62"
+  measurementId: "G-G0N2RQKZ62",
 };
 
-
-const app = initializeApp(firebaseConfig);
+export const app = initializeApp(firebaseConfig);
 export const database = getDatabase(app);

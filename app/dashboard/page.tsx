@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
 import { ref, onValue } from "firebase/database";
 import { database } from "@/lib/firebase";
+import { useRouter } from "next/navigation";
 
 interface Video {
   title: string;
@@ -16,9 +17,10 @@ interface Video {
   thumbnailUrl: string;
   type: string;
   language?: string;
+  series?: string;
 }
 
-const categories = ["Movie", "Episode", "Horror", "Clip", "Trailer", "Action","Song"];
+const categories = ["Movie", "Horror", "Clip", "Trailer", "Action", "Song"];
 const languages = ["Telugu", "Hindi", "Tamil", "Other"];
 
 export default function UserDashboard() {
@@ -27,15 +29,15 @@ export default function UserDashboard() {
   const [filter, setFilter] = useState("");
   const [languageFilter, setLanguageFilter] = useState("");
   const [heroIndex, setHeroIndex] = useState(0);
+  const router = useRouter();
 
-  // Fetch videos from Firebase Realtime Database
+  // Fetch videos
   useEffect(() => {
     const videosRef = ref(database, "videos");
     onValue(videosRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
-        const arr = Object.values(data) as Video[];
-        setVideos(arr);
+        setVideos(Object.values(data) as Video[]);
       } else {
         setVideos([]);
       }
@@ -69,12 +71,20 @@ export default function UserDashboard() {
     return matchesSearch && matchesFilter && matchesLanguage;
   });
 
-  // Group videos by type
+  // Group episodes by series
+  const episodesBySeries: Record<string, Video[]> = {};
+  filteredVideos
+    .filter((v) => v.type === "Episode")
+    .forEach((ep) => {
+      const key = ep.series || ep.title;
+      if (!episodesBySeries[key]) episodesBySeries[key] = [];
+      episodesBySeries[key].push(ep);
+    });
+
+  // Group non-episode categories
   const groupedVideos: Record<string, Video[]> = {};
   categories.forEach((cat) => {
-    groupedVideos[cat] = filteredVideos
-      .filter((v) => v.type === cat)
-      .filter((v) => !(cat === "Episode" && latestEpisodes.includes(v))); // Remove latest episodes from normal carousel
+    groupedVideos[cat] = filteredVideos.filter((v) => v.type === cat);
   });
 
   return (
@@ -101,6 +111,7 @@ export default function UserDashboard() {
             {categories.map((cat) => (
               <option key={cat} value={cat}>{cat}</option>
             ))}
+            <option value="Episode">Episodes</option>
           </select>
 
           <select
@@ -116,7 +127,7 @@ export default function UserDashboard() {
         </div>
       </div>
 
-      {/* Latest Episodes Hero Carousel */}
+      {/* Hero */}
       {latestEpisodes.length > 0 && (
         <div className="relative h-[60vh] w-full pt-20 mb-12">
           <AnimatePresence mode="wait">
@@ -157,28 +168,44 @@ export default function UserDashboard() {
               {latestEpisodes[heroIndex].description}
             </motion.p>
             <Button
-              onClick={() => (window.location.href = `/watch/${videos.indexOf(latestEpisodes[heroIndex])}`)}
+              onClick={() => router.push(`/watch/${videos.indexOf(latestEpisodes[heroIndex])}`)}
               className="bg-red-600 hover:bg-red-700 px-6 py-2 rounded-full text-lg shadow-xl"
             >
               ▶ Play
             </Button>
           </div>
+        </div>
+      )}
 
-          {/* Hero Dots */}
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-3">
-            {latestEpisodes.map((_, idx) => (
-              <button
-                key={idx}
-                onClick={() => setHeroIndex(idx)}
-                className={`w-3 h-3 rounded-full ${idx === heroIndex ? "bg-red-600" : "bg-gray-500"}`}
-              />
+      {/* Episodes grouped by series */}
+      {Object.keys(episodesBySeries).length > 0 && (
+        <div className="px-6 space-y-14">
+          <h2 className="text-2xl font-bold tracking-wide border-l-4 border-red-600 pl-3">Series</h2>
+          <div className="flex gap-5 overflow-x-auto scrollbar-hide snap-x snap-mandatory pb-4">
+            {Object.keys(episodesBySeries).map((seriesName, idx) => (
+              <motion.div key={idx} whileHover={{ scale: 1.08 }} className="snap-start">
+                <Card
+                  className="relative min-w-[220px] bg-gray-900 border-none rounded-xl overflow-hidden shadow-lg cursor-pointer group"
+                  onClick={() => router.push(`/series/${encodeURIComponent(seriesName)}`)}
+                >
+                  <img
+                    src={episodesBySeries[seriesName][0].thumbnailUrl}
+                    alt={seriesName}
+                    className="h-40 w-full object-cover group-hover:brightness-75 transition"
+                  />
+                  <CardContent className="p-3">
+                    <h3 className="font-bold text-sm truncate">{seriesName}</h3>
+                    <p className="text-xs text-gray-400">{episodesBySeries[seriesName].length} Episodes</p>
+                  </CardContent>
+                </Card>
+              </motion.div>
             ))}
           </div>
         </div>
       )}
 
-      {/* Carousels by category */}
-      <div className="px-6 space-y-14">
+      {/* Other categories */}
+      <div className="px-6 space-y-14 mt-10">
         {categories.map(
           (cat) =>
             groupedVideos[cat]?.length > 0 && (
@@ -189,7 +216,7 @@ export default function UserDashboard() {
                     <motion.div key={idx} whileHover={{ scale: 1.08 }} className="snap-start">
                       <Card
                         className="relative min-w-[220px] bg-gray-900 border-none rounded-xl overflow-hidden shadow-lg cursor-pointer group"
-                        onClick={() => (window.location.href = `/watch/${videos.indexOf(video)}`)}
+                        onClick={() => router.push(`/watch/${videos.indexOf(video)}`)}
                       >
                         <img
                           src={video.thumbnailUrl}
