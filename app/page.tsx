@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Play, Clapperboard, Laugh, Users, Popcorn, Heart } from "lucide-react"
+import { Play, Clapperboard, Laugh, Users, Popcorn, Heart, Linkedin, Instagram, Facebook, Twitter, Youtube } from "lucide-react"
 import { getAuth, onAuthStateChanged } from "firebase/auth"
 import { getDatabase, ref, get } from "firebase/database"
 import { app } from "@/lib/firebase"
@@ -29,14 +29,14 @@ export default function HomePage() {
       } else {
         setIsAdmin(false)
       }
-      setLoading(false) // ✅ only update after Firebase check
+      setLoading(false)
     })
 
     return () => unsubscribe()
   }, [auth, db])
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen flex flex-col bg-background">
       {/* Hero Section */}
       <div className="relative h-screen flex items-center justify-center overflow-hidden">
         <div
@@ -68,7 +68,6 @@ export default function HomePage() {
               </Button>
             </Link>
 
-            {/* 🔐 Only render after Firebase check is done */}
             {!loading && isAdmin && (
               <Button
                 size="lg"
@@ -83,7 +82,7 @@ export default function HomePage() {
       </div>
 
       {/* Funny Features Section */}
-      <div className="py-20 px-4">
+      <div className="py-20 px-4 flex-grow">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-4xl font-bold text-center text-foreground mb-16">
             Why Choose MojiFlix?
@@ -98,6 +97,40 @@ export default function HomePage() {
           </div>
         </div>
       </div>
+
+      {/* Footer */}
+      <footer className="bg-black text-white py-10 mt-10">
+        <div className="max-w-6xl mx-auto px-6 text-center space-y-6">
+          {/* Social Links */}
+          <div className="flex justify-center space-x-6">
+            <a href="https://www.linkedin.com/company/filmymoji" target="_blank" rel="noopener noreferrer">
+              <Linkedin className="w-6 h-6 hover:text-primary transition-colors" />
+            </a>
+            <a href="https://instagram.com/filmymoji" target="_blank" rel="noopener noreferrer">
+              <Instagram className="w-6 h-6 hover:text-pink-500 transition-colors" />
+            </a>
+            <a href="https://facebook.com/FilmyMoji" target="_blank" rel="noopener noreferrer">
+              <Facebook className="w-6 h-6 hover:text-blue-500 transition-colors" />
+            </a>
+            <a href="https://twitter.com/filmymoji" target="_blank" rel="noopener noreferrer">
+              <Twitter className="w-6 h-6 hover:text-sky-400 transition-colors" />
+            </a>
+            <a href="https://youtube.com/c/FilmymojiShorts/videos" target="_blank" rel="noopener noreferrer">
+              <Youtube className="w-6 h-6 hover:text-red-500 transition-colors" />
+            </a>
+          </div>
+
+          {/* Branding */}
+          <p className="text-lg font-bold">
+            FilmyMoji <span className="text-primary">#MojiFlix</span>
+          </p>
+
+          {/* Made with Love */}
+          <p className="text-sm text-gray-400">
+            Made with <span className="text-red-500">❤️</span> by FilmyMoji
+          </p>
+        </div>
+      </footer>
     </div>
   )
 }
