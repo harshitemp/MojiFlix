@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
-import { ref, onValue } from "firebase/database";
+import { ref, query, orderByChild, limitToLast, onValue } from "firebase/database";
 import { database } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 
@@ -18,6 +18,7 @@ interface Video {
   type: string;
   language?: string;
   series?: string;
+  createdAt?: number;
 }
 
 const categories = ["Movie", "Horror", "Clip", "Trailer", "Action", "Song"];
@@ -31,23 +32,27 @@ export default function UserDashboard() {
   const [heroIndex, setHeroIndex] = useState(0);
   const router = useRouter();
 
-  // Fetch videos
+  // Fetch videos (latest 50, ordered by createdAt)
   useEffect(() => {
     const videosRef = ref(database, "videos");
-    onValue(videosRef, (snapshot) => {
+    const q = query(videosRef, orderByChild("createdAt"), limitToLast(50));
+
+    onValue(q, (snapshot) => {
       const data = snapshot.val();
       if (data) {
-        setVideos(Object.values(data) as Video[]);
+        const allVideos = Object.values(data) as Video[];
+        setVideos(allVideos);
       } else {
         setVideos([]);
       }
     });
   }, []);
 
-  // Latest 5 episodes for hero carousel
+  // Get latest 5 episodes
   const latestEpisodes = videos
-    .filter((v) => v.type === "Episode")
-    .slice(0, 5);
+    .filter((v) => v.type?.toLowerCase() === "episode")
+    .slice(-5) // last 5
+    .reverse(); // newest first
 
   // Auto-rotate hero
   useEffect(() => {
@@ -74,7 +79,7 @@ export default function UserDashboard() {
   // Group episodes by series
   const episodesBySeries: Record<string, Video[]> = {};
   filteredVideos
-    .filter((v) => v.type === "Episode")
+    .filter((v) => v.type?.toLowerCase() === "episode")
     .forEach((ep) => {
       const key = ep.series || ep.title;
       if (!episodesBySeries[key]) episodesBySeries[key] = [];
@@ -127,7 +132,7 @@ export default function UserDashboard() {
         </div>
       </div>
 
-      {/* Hero */}
+      {/* Hero Carousel */}
       {latestEpisodes.length > 0 && (
         <div className="relative h-[60vh] w-full pt-20 mb-12">
           <AnimatePresence mode="wait">
@@ -173,6 +178,19 @@ export default function UserDashboard() {
             >
               ▶ Play
             </Button>
+          </div>
+
+          {/* Carousel indicators */}
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-3">
+            {latestEpisodes.map((_, idx) => (
+              <button
+                key={idx}
+                onClick={() => setHeroIndex(idx)}
+                className={`w-3 h-3 rounded-full transition ${
+                  heroIndex === idx ? "bg-red-600 scale-110" : "bg-gray-500"
+                }`}
+              />
+            ))}
           </div>
         </div>
       )}
