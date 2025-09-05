@@ -14,7 +14,7 @@ interface Video {
   thumbnailUrl: string;
   type: string;
   language: string;
-  series?: string; // NEW FIELD
+  series?: string;
 }
 
 export default function AdminDashboard() {
@@ -165,7 +165,7 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* Edit Modal */}
+      {/* Edit Modal (all fields always visible) */}
       {editingVideo && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
           <div className="bg-black p-6 rounded-xl shadow-xl max-w-lg w-full overflow-y-auto max-h-[90vh] relative">
@@ -187,7 +187,7 @@ export default function AdminDashboard() {
                   thumbnailUrl: (form.elements.namedItem("thumbnailUrl") as HTMLInputElement).value,
                   type: (form.elements.namedItem("type") as HTMLSelectElement).value,
                   language: (form.elements.namedItem("language") as HTMLSelectElement).value || "Other",
-                  series: (form.elements.namedItem("series") as HTMLInputElement)?.value || undefined,
+                  series: (form.elements.namedItem("series") as HTMLInputElement).value || "",
                 };
                 updateVideo(editingVideo.key, updated);
               }}
@@ -243,7 +243,7 @@ export default function AdminDashboard() {
                   id="type"
                   name="type"
                   defaultValue={editingVideo.data.type}
-                  className="w-full rounded-lg p-2 bg-gray-800 text-white border border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full rounded-lg p-2 bg-gray-800 text-white border border-gray-600"
                 >
                   <option value="Movie">Movie</option>
                   <option value="Episode">Episode</option>
@@ -262,7 +262,7 @@ export default function AdminDashboard() {
                   id="language"
                   name="language"
                   defaultValue={editingVideo.data.language}
-                  className="w-full rounded-lg p-2 bg-gray-800 text-white border border-gray-600 focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  className="w-full rounded-lg p-2 bg-gray-800 text-white border border-gray-600"
                 >
                   <option value="Telugu">Telugu</option>
                   <option value="Hindi">Hindi</option>
@@ -271,19 +271,16 @@ export default function AdminDashboard() {
                 </select>
               </div>
 
-              {/* NEW FIELD: Series */}
-              {editingVideo.data.type === "Episode" && (
-                <div>
-                  <label htmlFor="series" className="block text-sm font-medium text-white mb-1">Series</label>
-                  <input
-                    id="series"
-                    name="series"
-                    defaultValue={editingVideo.data.series || ""}
-                    placeholder="Series name (e.g. Law Firm Battles)"
-                    className="w-full border border-gray-300 rounded-lg p-2"
-                  />
-                </div>
-              )}
+              <div>
+                <label htmlFor="series" className="block text-sm font-medium text-white mb-1">Series</label>
+                <input
+                  id="series"
+                  name="series"
+                  defaultValue={editingVideo.data.series || ""}
+                  placeholder="Series name (e.g. Law Firm Battles)"
+                  className="w-full border border-gray-300 rounded-lg p-2"
+                />
+              </div>
 
               <Button type="submit" className="w-full bg-green-600 hover:bg-green-700 text-white">
                 Save Changes

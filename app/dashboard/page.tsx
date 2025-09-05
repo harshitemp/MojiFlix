@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
-import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
-import { ref, query, orderByChild, limitToLast, onValue } from "firebase/database";
+import { ref, query, orderByChild, onValue } from "firebase/database";
 import { database } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 
@@ -26,17 +25,15 @@ const languages = ["Telugu", "Hindi", "Tamil", "Other"];
 
 export default function UserDashboard() {
   const [videos, setVideos] = useState<Video[]>([]);
-  const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("");
   const [languageFilter, setLanguageFilter] = useState("");
   const [heroIndex, setHeroIndex] = useState(0);
   const router = useRouter();
 
-  // Fetch videos (latest 50, ordered by createdAt)
+  // ✅ Fetch videos
   useEffect(() => {
     const videosRef = ref(database, "videos");
-    const q = query(videosRef, orderByChild("createdAt"), limitToLast(50));
-
+    const q = query(videosRef, orderByChild("createdAt"));
     onValue(q, (snapshot) => {
       const data = snapshot.val();
       if (data) {
@@ -48,13 +45,13 @@ export default function UserDashboard() {
     });
   }, []);
 
-  // Get latest 5 episodes
+  // ✅ Latest episodes for hero
   const latestEpisodes = videos
     .filter((v) => v.type?.toLowerCase() === "episode")
-    .slice(-5) // last 5
-    .reverse(); // newest first
+    .slice(-5)
+    .reverse();
 
-  // Auto-rotate hero
+  // ✅ Auto-rotate hero
   useEffect(() => {
     if (latestEpisodes.length === 0) return;
     const interval = setInterval(() => {
@@ -63,48 +60,101 @@ export default function UserDashboard() {
     return () => clearInterval(interval);
   }, [latestEpisodes]);
 
-  // Filter videos (by search + category + language)
+  // ✅ Apply filters
   const filteredVideos = videos.filter((video) => {
-    const matchesSearch = video.title.toLowerCase().includes(search.toLowerCase());
     const matchesFilter = filter ? video.type === filter : true;
-    const matchesLanguage =
-      languageFilter
-        ? languageFilter === "Other"
-          ? !["Telugu", "Hindi", "Tamil"].includes(video.language || "")
-          : video.language === languageFilter
-        : true;
-    return matchesSearch && matchesFilter && matchesLanguage;
+    const matchesLanguage = languageFilter
+      ? languageFilter === "Other"
+        ? !["Telugu", "Hindi", "Tamil"].includes(video.language || "")
+        : video.language === languageFilter
+      : true;
+    return matchesFilter && matchesLanguage;
   });
 
-  // Group episodes by series
-  const episodesBySeries: Record<string, Video[]> = {};
+  // ✅ Group by series
+  const episodesBySeries: Record<
+    string,
+    { seriesName: string; episodes: Video[] }
+  > = {};
   filteredVideos
     .filter((v) => v.type?.toLowerCase() === "episode")
     .forEach((ep) => {
-      const key = ep.series || ep.title;
-      if (!episodesBySeries[key]) episodesBySeries[key] = [];
-      episodesBySeries[key].push(ep);
+      const normalizedKey = ep.series
+        ? ep.series.trim().toLowerCase()
+        : ep.title.trim().toLowerCase();
+      const displayName = ep.series?.trim() || ep.title.trim();
+
+      if (!episodesBySeries[normalizedKey]) {
+        episodesBySeries[normalizedKey] = {
+          seriesName: displayName,
+          episodes: [],
+        };
+      }
+      episodesBySeries[normalizedKey].episodes.push(ep);
     });
 
-  // Group non-episode categories
+  // ✅ Group categories
   const groupedVideos: Record<string, Video[]> = {};
   categories.forEach((cat) => {
     groupedVideos[cat] = filteredVideos.filter((v) => v.type === cat);
   });
 
+  // ✅ Auto-scroll helper (one card every 10s)
+  const startStepScroll = (el: HTMLDivElement, step = 240) => {
+    return setInterval(() => {
+      if (!el) return;
+      const { scrollLeft, clientWidth, scrollWidth } = el;
+
+      // If at end → reset
+      if (scrollLeft + clientWidth >= scrollWidth - step) {
+        el.scrollTo({ left: 0, behavior: "smooth" });
+      } else {
+        el.scrollBy({ left: step, behavior: "smooth" });
+      }
+    }, 10000); // every 10s
+  };
+
+  // ✅ Refs
+  const seriesRef = useRef<HTMLDivElement | null>(null);
+  const catRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  // ✅ Attach auto-scroll
+  useEffect(() => {
+    const timers: ReturnType<typeof setInterval>[] = [];
+
+    if (seriesRef.current && Object.keys(episodesBySeries).length > 4) {
+      timers.push(startStepScroll(seriesRef.current));
+    }
+
+    categories.forEach((cat) => {
+      const ref = catRefs.current[cat];
+      if (ref && groupedVideos[cat]?.length > 4) {
+        timers.push(startStepScroll(ref));
+      }
+    });
+
+    return () => timers.forEach((t) => clearInterval(t));
+  }, [videos, groupedVideos, episodesBySeries]);
+
   return (
     <div className="bg-black min-h-screen text-white font-sans">
       {/* Navbar */}
       <div className="flex items-center justify-between px-10 py-6 bg-gradient-to-b from-black/90 to-transparent fixed top-0 w-full z-20">
-        <Image src="/logo.png" alt="Moji Flix Logo" width={140} height={50} className="object-contain" />
+        <Image
+          src="/logo.png"
+          alt="Moji Flix Logo"
+          width={140}
+          height={50}
+          className="object-contain"
+        />
 
         <div className="flex items-center gap-4">
-          <Input
+          <input
             type="text"
             placeholder="Search movies, clips, trailers..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="bg-gray-900 border border-gray-700 text-white placeholder:text-gray-500 w-72 rounded-full px-4 py-2"
+            className="bg-gray-900 border border-gray-700 text-white placeholder:text-gray-500 w-72 rounded-full px-4 py-2 cursor-pointer"
+            onFocus={() => router.push("/search")}
+            readOnly
           />
 
           <select
@@ -114,7 +164,9 @@ export default function UserDashboard() {
           >
             <option value="">All Categories</option>
             {categories.map((cat) => (
-              <option key={cat} value={cat}>{cat}</option>
+              <option key={cat} value={cat}>
+                {cat}
+              </option>
             ))}
             <option value="Episode">Episodes</option>
           </select>
@@ -126,7 +178,9 @@ export default function UserDashboard() {
           >
             <option value="">All Languages</option>
             {languages.map((lang) => (
-              <option key={lang} value={lang}>{lang}</option>
+              <option key={lang} value={lang}>
+                {lang}
+              </option>
             ))}
           </select>
         </div>
@@ -134,7 +188,7 @@ export default function UserDashboard() {
 
       {/* Hero Carousel */}
       {latestEpisodes.length > 0 && (
-        <div className="relative h-[60vh] w-full pt-20 mb-12">
+        <div className="relative h-[60vh] w-full pt-24 mb-12">
           <AnimatePresence mode="wait">
             <motion.div
               key={heroIndex}
@@ -154,40 +208,28 @@ export default function UserDashboard() {
           </AnimatePresence>
 
           <div className="absolute bottom-20 left-10 max-w-xl">
-            <motion.h1
-              key={latestEpisodes[heroIndex].title}
-              initial={{ y: 50, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ duration: 0.8 }}
-              className="text-3xl font-extrabold mb-2"
-            >
+            <h1 className="text-3xl font-extrabold mb-2">
               {latestEpisodes[heroIndex].title}
-            </motion.h1>
-            <motion.p
-              key={latestEpisodes[heroIndex].description}
-              initial={{ y: 30, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ duration: 0.9, delay: 0.2 }}
-              className="text-gray-300 mb-4 line-clamp-3"
-            >
+            </h1>
+            <p className="text-gray-300 mb-4 line-clamp-3">
               {latestEpisodes[heroIndex].description}
-            </motion.p>
+            </p>
             <Button
-              onClick={() => router.push(`/watch/${videos.indexOf(latestEpisodes[heroIndex])}`)}
+              onClick={() =>
+                router.push(`/watch/${videos.indexOf(latestEpisodes[heroIndex])}`)}
               className="bg-red-600 hover:bg-red-700 px-6 py-2 rounded-full text-lg shadow-xl"
             >
               ▶ Play
             </Button>
           </div>
 
-          {/* Carousel indicators */}
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-3">
+          <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex gap-2">
             {latestEpisodes.map((_, idx) => (
               <button
                 key={idx}
                 onClick={() => setHeroIndex(idx)}
                 className={`w-3 h-3 rounded-full transition ${
-                  heroIndex === idx ? "bg-red-600 scale-110" : "bg-gray-500"
+                  heroIndex === idx ? "bg-red-600" : "bg-gray-500"
                 }`}
               />
             ))}
@@ -195,29 +237,45 @@ export default function UserDashboard() {
         </div>
       )}
 
-      {/* Episodes grouped by series */}
+      {/* Series Section */}
       {Object.keys(episodesBySeries).length > 0 && (
         <div className="px-6 space-y-14">
-          <h2 className="text-2xl font-bold tracking-wide border-l-4 border-red-600 pl-3">Series</h2>
-          <div className="flex gap-5 overflow-x-auto scrollbar-hide snap-x snap-mandatory pb-4">
-            {Object.keys(episodesBySeries).map((seriesName, idx) => (
-              <motion.div key={idx} whileHover={{ scale: 1.08 }} className="snap-start">
-                <Card
-                  className="relative min-w-[220px] bg-gray-900 border-none rounded-xl overflow-hidden shadow-lg cursor-pointer group"
-                  onClick={() => router.push(`/series/${encodeURIComponent(seriesName)}`)}
+          <h2 className="text-2xl font-bold tracking-wide border-l-4 border-red-600 pl-3">
+            Series
+          </h2>
+          <div
+            ref={seriesRef}
+            className="flex gap-5 overflow-x-auto scrollbar-hide snap-x snap-mandatory pb-4"
+          >
+            {Object.keys(episodesBySeries).map((seriesKey, idx) => {
+              const { seriesName, episodes } = episodesBySeries[seriesKey];
+              return (
+                <motion.div
+                  key={idx}
+                  whileHover={{ scale: 1.08 }}
+                  className="snap-start"
                 >
-                  <img
-                    src={episodesBySeries[seriesName][0].thumbnailUrl}
-                    alt={seriesName}
-                    className="h-40 w-full object-cover group-hover:brightness-75 transition"
-                  />
-                  <CardContent className="p-3">
-                    <h3 className="font-bold text-sm truncate">{seriesName}</h3>
-                    <p className="text-xs text-gray-400">{episodesBySeries[seriesName].length} Episodes</p>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
+                  <Card
+                    className="relative min-w-[220px] bg-gray-900 border-none rounded-xl overflow-hidden shadow-lg cursor-pointer group"
+                    onClick={() =>
+                      router.push(`/series/${encodeURIComponent(seriesName)}`)
+                    }
+                  >
+                    <img
+                      src={episodes[0].thumbnailUrl}
+                      alt={seriesName}
+                      className="h-40 w-full object-cover group-hover:brightness-75 transition"
+                    />
+                    <CardContent className="p-3">
+                      <h3 className="font-bold text-sm truncate">{seriesName}</h3>
+                      <p className="text-xs text-gray-400">
+                        {episodes.length} Episodes
+                      </p>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -228,13 +286,25 @@ export default function UserDashboard() {
           (cat) =>
             groupedVideos[cat]?.length > 0 && (
               <div key={cat} className="space-y-4">
-                <h2 className="text-2xl font-bold tracking-wide border-l-4 border-red-600 pl-3">{cat}</h2>
-                <div className="flex gap-5 overflow-x-auto scrollbar-hide snap-x snap-mandatory pb-4">
+                <h2 className="text-2xl font-bold tracking-wide border-l-4 border-red-600 pl-3">
+                  {cat}
+                </h2>
+                <div
+                  ref={(el) => {
+                    catRefs.current[cat] = el;
+                  }}
+                  className="flex gap-5 overflow-x-auto scrollbar-hide snap-x snap-mandatory pb-4"
+                >
                   {groupedVideos[cat].map((video, idx) => (
-                    <motion.div key={idx} whileHover={{ scale: 1.08 }} className="snap-start">
+                    <motion.div
+                      key={idx}
+                      whileHover={{ scale: 1.08 }}
+                      className="snap-start"
+                    >
                       <Card
                         className="relative min-w-[220px] bg-gray-900 border-none rounded-xl overflow-hidden shadow-lg cursor-pointer group"
-                        onClick={() => router.push(`/watch/${videos.indexOf(video)}`)}
+                        onClick={() =>
+                          router.push(`/watch/${videos.indexOf(video)}`)}
                       >
                         <img
                           src={video.thumbnailUrl}
@@ -242,8 +312,12 @@ export default function UserDashboard() {
                           className="h-40 w-full object-cover group-hover:brightness-75 transition"
                         />
                         <CardContent className="p-3">
-                          <h3 className="font-bold text-sm truncate">{video.title}</h3>
-                          <p className="text-xs text-gray-400 truncate">{video.type} | {video.language || "Other"}</p>
+                          <h3 className="font-bold text-sm truncate">
+                            {video.title}
+                          </h3>
+                          <p className="text-xs text-gray-400 truncate">
+                            {video.type} | {video.language || "Other"}
+                          </p>
                         </CardContent>
                       </Card>
                     </motion.div>
@@ -254,7 +328,9 @@ export default function UserDashboard() {
         )}
 
         {filteredVideos.length === 0 && (
-          <p className="text-center text-gray-500 mt-20 text-lg">No videos found.</p>
+          <p className="text-center text-gray-500 mt-20 text-lg">
+            No videos found.
+          </p>
         )}
       </div>
     </div>
